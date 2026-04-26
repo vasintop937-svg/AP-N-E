@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Матч-трекер</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=PT+Sans:wght@400;700&display=swap');
+
+:root {
+–bg: #0e0e12;
+–card: #18181f;
+–border: #2a2a35;
+–red: #c0392b;
+–red-light: #e74c3c;
+–red-dim: #3d1414;
+–blue: #2980b9;
+–blue-light: #3498db;
+–blue-dim: #0c2040;
+–gold: #f1c40f;
+–gold-dim: #3d3000;
+–white: #f0f0f0;
+–dim: #555;
+–dim2: #888;
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+background: var(–bg);
+color: var(–white);
+font-family: ‘PT Sans’, sans-serif;
+min-height: 100vh;
+padding: 14px 10px 40px;
+}
+
+/* ── SCOREBOARD ─────────────────────────── */
+.scoreboard {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 16px;
+padding: 16px 12px 12px;
+margin-bottom: 12px;
+text-align: center;
+cursor: pointer;
+user-select: none;
+}
+
+.match-meta {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.78rem;
+letter-spacing: 0.2em;
+color: var(–dim2);
+margin-bottom: 4px;
+}
+
+.match-time {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.9rem;
+letter-spacing: 0.22em;
+color: var(–gold);
+margin-bottom: 8px;
+}
+
+.score-row {
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.team-score-block {
+display: flex;
+flex-direction: column;
+align-items: center;
+flex: 1;
+}
+
+.team-score-name {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.95rem;
+letter-spacing: 0.1em;
+margin-bottom: 2px;
+line-height: 1.1;
+}
+.team-score-name.red  { color: var(–red-light); }
+.team-score-name.blue { color: var(–blue-light); }
+
+.score-num {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 5.5rem;
+line-height: 1;
+color: var(–white);
+transition: transform 0.15s, color 0.15s;
+}
+.score-num.bump { transform: scale(1.28); color: var(–gold); }
+
+.score-sep {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 4.5rem;
+color: var(–border);
+padding: 0 10px;
+line-height: 1;
+margin-top: 6px;
+}
+
+.skip-hint {
+font-size: 0.72rem;
+color: #333;
+margin-top: 6px;
+letter-spacing: 0.05em;
+transition: color 0.2s;
+}
+.skip-hint.active { color: var(–gold); }
+
+/* ── GOAL LOG ───────────────────────────── */
+.goal-log {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 10px 12px;
+margin-bottom: 12px;
+}
+
+.goal-log-title {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.78rem;
+letter-spacing: 0.22em;
+color: var(–dim2);
+margin-bottom: 6px;
+}
+
+.goal-entry {
+display: flex;
+align-items: center;
+gap: 7px;
+padding: 5px 0;
+border-bottom: 1px solid #1e1e28;
+font-size: 0.88rem;
+animation: slideIn 0.2s ease;
+}
+.goal-entry:last-child { border-bottom: none; }
+
+@keyframes slideIn {
+from { opacity: 0; transform: translateY(-5px); }
+to   { opacity: 1; transform: translateY(0); }
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-red  { background: var(–red-light); }
+.dot-blue { background: var(–blue-light); }
+
+.goal-scorer { font-weight: 700; color: var(–white); }
+.goal-assist { color: var(–dim2); font-size: 0.82rem; }
+
+.goal-delete {
+margin-left: auto;
+background: none; border: none;
+color: #333; cursor: pointer;
+font-size: 0.95rem; padding: 2px 5px;
+border-radius: 4px; transition: color 0.15s;
+}
+.goal-delete:hover { color: var(–red-light); }
+.no-goals { color: var(–dim); font-size: 0.82rem; font-style: italic; }
+
+/* ── COLUMNS ────────────────────────────── */
+.columns {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+align-items: start;
+}
+
+/* ── TEAM PANEL ─────────────────────────── */
+.team-panel { background: var(–card); border: 1px solid var(–border); border-radius: 14px; overflow: hidden; }
+
+.team-hdr { padding: 10px 12px 8px; text-align: center; }
+.team-hdr.red  { background: #5c0e0e; }
+.team-hdr.blue { background: #0c2545; }
+
+.team-hdr-name {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 1.2rem;
+letter-spacing: 0.08em;
+color: #fff;
+line-height: 1.15;
+}
+.team-hdr-sub {
+font-size: 0.7rem;
+color: rgba(255,255,255,0.45);
+letter-spacing: 0.05em;
+margin-top: 2px;
+}
+
+/* ── MODE BUTTONS ───────────────────────── */
+.mode-toggle { display: flex; gap: 5px; padding: 8px 8px 2px; }
+
+.mode-btn {
+flex: 1; padding: 7px 4px;
+border-radius: 8px; border: 1px solid var(–border);
+background: var(–bg); color: var(–dim2);
+font-family: ‘PT Sans’, sans-serif; font-size: 0.76rem; font-weight: 700;
+cursor: pointer; letter-spacing: 0.04em; transition: all 0.12s; text-align: center;
+}
+.mode-btn.active-goal   { background: var(–red-dim);  border-color: var(–red-light); color: var(–red-light); }
+.mode-btn.active-assist { background: var(–gold-dim); border-color: var(–gold);      color: var(–gold); }
+
+.pending-bar {
+text-align: center; font-size: 0.75rem;
+color: var(–gold); padding: 3px 8px 0;
+min-height: 18px; font-style: italic;
+}
+
+/* ── PLAYER LIST ────────────────────────── */
+.player-list { padding: 4px 8px 10px; }
+
+.sec-label {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.68rem; letter-spacing: 0.2em;
+color: var(–dim); padding: 4px 2px;
+}
+
+.player-btn {
+display: flex; align-items: center;
+width: 100%; background: #1c1c26;
+border: 1px solid var(–border); border-radius: 8px;
+padding: 7px 8px; margin-bottom: 4px;
+cursor: pointer; gap: 8px; transition: all 0.1s;
+}
+.player-btn:active { opacity: 0.8; }
+.player-btn.selecting-goal   { border-color: var(–red-light); background: var(–red-dim); }
+.player-btn.selecting-assist { border-color: var(–gold);      background: var(–gold-dim); }
+.player-btn.is-goalie        { background: #16160e; border-color: #2e2e10; }
+
+.p-num {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 1.4rem; min-width: 32px;
+text-align: right; line-height: 1;
+}
+.team-red  .p-num { color: var(–red-light); }
+.team-blue .p-num { color: var(–blue-light); }
+.is-goalie .p-num { color: var(–gold) !important; }
+
+.p-div { width: 1.5px; height: 20px; background: var(–border); flex-shrink: 0; }
+
+.p-name { font-size: 0.88rem; font-weight: 700; color: var(–white); text-align: left; flex: 1; line-height: 1.2; }
+
+.p-stats { display: flex; gap: 4px; flex-shrink: 0; }
+
+.badge {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 0.72rem; padding: 2px 5px;
+border-radius: 4px; letter-spacing: 0.04em;
+}
+.badge-g { background: var(–red-dim);  color: var(–red-light); }
+.badge-a { background: var(–gold-dim); color: var(–gold); }
+
+.reset-btn {
+display: block; margin: 18px auto 0;
+background: none; border: 1px solid #2a2a35;
+color: #444; padding: 8px 24px; border-radius: 8px;
+font-family: ‘PT Sans’, sans-serif; font-size: 0.78rem;
+cursor: pointer; transition: all 0.15s;
+}
+.reset-btn:hover { border-color: var(–red-light); color: var(–red-light); }
+</style>
+
+</head>
+<body>
+
+<!-- SCOREBOARD -->
+
+<div class="scoreboard" id="scoreboard" onclick="skipAssist()">
+  <div class="match-meta">КСК «Витязь» г.Подольск · 26.04.2026</div>
+  <div class="match-time">⏱ Кубок ФХМО 2026</div>
+  <div class="score-row">
+    <div class="team-score-block">
+      <div class="team-score-name blue">КРЫЛЬЯ</div>
+      <div class="score-num" id="score-left">0</div>
+    </div>
+    <div class="score-sep">:</div>
+    <div class="team-score-block">
+      <div class="team-score-name red">АТЛАНТ 2</div>
+      <div class="score-num" id="score-right">0</div>
+    </div>
+  </div>
+  <div class="skip-hint" id="skip-hint">нажми на табло чтобы пропустить передачу</div>
+</div>
+
+<!-- GOAL LOG -->
+
+<div class="goal-log">
+  <div class="goal-log-title">🏒 ПРОТОКОЛ ГОЛОВ</div>
+  <div id="goal-log-body"><div class="no-goals">Голов пока нет</div></div>
+</div>
+
+<!-- COLUMNS -->
+
+<div class="columns">
+  <!-- LEFT: Крылья -->
+  <div class="team-panel">
+    <div class="team-hdr blue">
+      <div class="team-hdr-name">КРЫЛЬЯ</div>
+      <div class="team-hdr-sub">2015–2016 г.р.</div>
+    </div>
+    <div class="pending-bar" id="pending-left"></div>
+    <div class="mode-toggle">
+      <button class="mode-btn" id="mode-goal-left"   onclick="setMode('left','goal')">⚡ Гол</button>
+      <button class="mode-btn" id="mode-assist-left" onclick="setMode('left','assist')">🎯 Пас</button>
+    </div>
+    <div class="player-list team-blue" id="players-left"></div>
+  </div>
+
+  <!-- RIGHT: Академия Атлант 2 -->
+
+  <div class="team-panel">
+    <div class="team-hdr red">
+      <div class="team-hdr-name">АКАДЕМИЯ АТЛАНТ 2</div>
+      <div class="team-hdr-sub">Московская область · девушки</div>
+    </div>
+    <div class="pending-bar" id="pending-right"></div>
+    <div class="mode-toggle">
+      <button class="mode-btn" id="mode-goal-right"   onclick="setMode('right','goal')">⚡ Гол</button>
+      <button class="mode-btn" id="mode-assist-right" onclick="setMode('right','assist')">🎯 Пас</button>
+    </div>
+    <div class="player-list team-red" id="players-right"></div>
+  </div>
+</div>
+
+<button class="reset-btn" onclick="resetAll()">↺ Сбросить счёт и статистику</button>
+
+<script>
+const teams = {
+  left: {
+    goalies: [
+      { num: 1,  name: 'Окладников Владимир' },
+      { num: 52, name: 'Кравцунов Максим' },
+    ],
+    players: [
+      { num: 9,  name: 'Соколов Артем' },
+      { num: 10, name: 'Иванов Мирослав' },
+      { num: 11, name: 'Постарнак Марьяна' },
+      { num: 17, name: 'Гурьев Ярослав' },
+      { num: 21, name: 'Подъяблонский Иван' },
+      { num: 24, name: 'Винцукевич Роман' },
+      { num: 67, name: 'Орлов Егор' },
+      { num: 69, name: 'Харламов Максим' },
+      { num: 71, name: 'Усов Федор' },
+      { num: 72, name: 'Денисов Денис' },
+      { num: 81, name: 'Мягков Михаил' },
+      { num: 82, name: 'Зайцев Александр' },
+      { num: 87, name: 'Какалюк Максим' },
+      { num: 88, name: 'Бельский Константин' },
+      { num: 91, name: 'Потемка Петр' },
+      { num: 97, name: 'Белаш Игорь' },
+      { num: 99, name: 'Пупков Максим' },
+    ]
+  },
+  right: {
+    goalies: [
+      { num: 1, name: 'Кушевая Ульяна' }
+    ],
+    players: [
+      { num: 4,  name: 'Кравцова Василина' },
+      { num: 7,  name: 'Хрыкова Александра' },
+      { num: 8,  name: 'Христофорова Станислава' },
+      { num: 16, name: 'Трушина Ксения' },
+      { num: 17, name: 'Федорова Мария' },
+      { num: 19, name: 'Кособокова Дарья' },
+      { num: 21, name: 'Вахрушина Дарья' },
+      { num: 22, name: 'Алексеева Дарья' },
+      { num: 25, name: 'Коновалова Ксения' },
+      { num: 28, name: 'Еремина Варвара' },
+      { num: 30, name: 'Сысоева Лиана' },
+      { num: 32, name: 'Шевчук Дарина' },
+      { num: 37, name: 'Седых Василиса' },
+      { num: 40, name: 'Колибащ Дарья' },
+    ]
+  }
+};
+
+const stats = { left: {}, right: {} };
+const goalLog = [];
+const pending = { left: null, right: null };
+const pendingGoal = { left: null, right: null };
+
+function initStats(side) {
+  [...teams[side].goalies, ...teams[side].players].forEach(p => {
+    if (!stats[side][p.num]) stats[side][p.num] = { goals: 0, assists: 0 };
+  });
+}
+
+function renderTeam(side) {
+  initStats(side);
+  const t = teams[side];
+  const el = document.getElementById(`players-${side}`);
+  el.innerHTML = '';
+
+  const renderSection = (list, isGoalie) => {
+    if (!list.length) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'sec-label';
+    lbl.textContent = isGoalie ? '🥅 ВРАТАРЬ' : 'ПОЛЕВЫЕ ИГРОКИ';
+    el.appendChild(lbl);
+    list.forEach(p => {
+      const s = stats[side][p.num] || { goals: 0, assists: 0 };
+      const btn = document.createElement('button');
+      btn.className = 'player-btn' + (isGoalie ? ' is-goalie' : '');
+      btn.dataset.num = p.num;
+      btn.onclick = () => handleClick(side, p);
+
+      let badges = '';
+      if (s.goals > 0)   badges += `<span class="badge badge-g">Г&nbsp;${s.goals}</span>`;
+      if (s.assists > 0) badges += `<span class="badge badge-a">П&nbsp;${s.assists}</span>`;
+
+      btn.innerHTML = `
+        <span class="p-num">${p.num}</span>
+        <span class="p-div"></span>
+        <span class="p-name">${p.name}</span>
+        <span class="p-stats">${badges}</span>
+      `;
+      el.appendChild(btn);
+    });
+  };
+
+  renderSection(t.goalies, true);
+  renderSection(t.players, false);
+  highlightPlayers(side);
+}
+
+function setMode(side, mode) {
+  if (pending[side] === mode) {
+    pending[side] = null;
+    pendingGoal[side] = null;
+  } else {
+    pending[side] = mode;
+    if (mode === 'goal') pendingGoal[side] = null;
+  }
+  updateModeUI(side);
+  updatePendingBar(side);
+  highlightPlayers(side);
+  updateSkipHint();
+}
+
+function updateModeUI(side) {
+  document.getElementById(`mode-goal-${side}`).className =
+    'mode-btn' + (pending[side] === 'goal' ? ' active-goal' : '');
+  document.getElementById(`mode-assist-${side}`).className =
+    'mode-btn' + (pending[side] === 'assist' ? ' active-assist' : '');
+}
+
+function updatePendingBar(side) {
+  const bar = document.getElementById(`pending-${side}`);
+  if (!pending[side]) { bar.textContent = ''; return; }
+  if (pending[side] === 'goal') { bar.textContent = 'Выбери автора гола'; return; }
+  if (pending[side] === 'assist') {
+    bar.textContent = pendingGoal[side]
+      ? `Гол: ${pendingGoal[side].name} — кто отдал пас?`
+      : 'Выбери ассистента';
+  }
+}
+
+function updateSkipHint() {
+  const active = pending.left === 'assist' || pending.right === 'assist';
+  document.getElementById('skip-hint').className = 'skip-hint' + (active ? ' active' : '');
+}
+
+function highlightPlayers(side) {
+  document.querySelectorAll(`#players-${side} .player-btn`).forEach(btn => {
+    btn.classList.remove('selecting-goal', 'selecting-assist');
+    if (pending[side] === 'goal')   btn.classList.add('selecting-goal');
+    if (pending[side] === 'assist') btn.classList.add('selecting-assist');
+  });
+}
+
+function handleClick(side, player) {
+  if (!pending[side]) return;
+
+  if (pending[side] === 'goal') {
+    stats[side][player.num].goals++;
+    pendingGoal[side] = player;
+    goalLog.push({ side, scorer: player, assist: null });
+    updateScore(side);
+    renderLog();
+    pending[side] = 'assist';
+    updateModeUI(side);
+    updatePendingBar(side);
+    highlightPlayers(side);
+    renderTeam(side);
+    updateSkipHint();
+    return;
+  }
+
+  if (pending[side] === 'assist') {
+    if (pendingGoal[side] && player.num === pendingGoal[side].num) {
+      finishAssist(side); return;
+    }
+    stats[side][player.num].assists++;
+    const last = goalLog[goalLog.length - 1];
+    if (last && !last.assist) last.assist = player;
+    renderLog();
+    finishAssist(side);
+    renderTeam(side);
+  }
+}
+
+function finishAssist(side) {
+  pending[side] = null;
+  pendingGoal[side] = null;
+  updateModeUI(side);
+  updatePendingBar(side);
+  highlightPlayers(side);
+  updateSkipHint();
+}
+
+function skipAssist() {
+  ['left','right'].forEach(side => {
+    if (pending[side] === 'assist' && pendingGoal[side]) {
+      renderLog();
+      finishAssist(side);
+      renderTeam(side);
+    }
+  });
+}
+
+function updateScore(side) {
+  const id = side === 'left' ? 'score-left' : 'score-right';
+  const el = document.getElementById(id);
+  el.textContent = Object.values(stats[side]).reduce((s, v) => s + v.goals, 0);
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+  setTimeout(() => el.classList.remove('bump'), 300);
+}
+
+function renderLog() {
+  const el = document.getElementById('goal-log-body');
+  if (!goalLog.length) {
+    el.innerHTML = '<div class="no-goals">Голов пока нет</div>';
+    return;
+  }
+  el.innerHTML = goalLog.map((e, i) => `
+    <div class="goal-entry">
+      <div class="dot ${e.side === 'left' ? 'dot-red' : 'dot-blue'}"></div>
+      <span class="goal-scorer">#${e.scorer.num} ${e.scorer.name}</span>
+      ${e.assist
+        ? `<span class="goal-assist">+ #${e.assist.num} ${e.assist.name}</span>`
+        : `<span class="goal-assist" style="color:#333">без паса</span>`}
+      <button class="goal-delete" onclick="deleteGoal(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function deleteGoal(idx) {
+  const e = goalLog[idx];
+  if (stats[e.side][e.scorer.num]) stats[e.side][e.scorer.num].goals = Math.max(0, stats[e.side][e.scorer.num].goals - 1);
+  if (e.assist && stats[e.side][e.assist.num]) stats[e.side][e.assist.num].assists = Math.max(0, stats[e.side][e.assist.num].assists - 1);
+  goalLog.splice(idx, 1);
+  updateScore(e.side);
+  renderLog();
+  renderTeam(e.side);
+}
+
+function resetAll() {
+  if (!confirm('Сбросить весь счёт и статистику?')) return;
+  ['left','right'].forEach(side => {
+    stats[side] = {};
+    pending[side] = null;
+    pendingGoal[side] = null;
+    initStats(side);
+    updateModeUI(side);
+    updatePendingBar(side);
+    renderTeam(side);
+    document.getElementById(side === 'left' ? 'score-left' : 'score-right').textContent = '0';
+  });
+  goalLog.length = 0;
+  renderLog();
+  updateSkipHint();
+}
+
+initStats('left');
+initStats('right');
+renderTeam('left');
+renderTeam('right');
+renderLog();
+</script>
+
+</body>
+</html>
